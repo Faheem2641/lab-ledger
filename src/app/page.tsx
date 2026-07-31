@@ -339,61 +339,33 @@ export default function LabBudgetTracker() {
       <div className="app-container">
       {/* Sidebar */}
       <aside className="sidebar">
-        <div>
-          <div className="brand">
-            <div className="brand-icon">
-              <Hexagon size={24} />
-            </div>
+        <div className="brand">
+          <div className="brand-icon">
+            <Hexagon size={22} />
+          </div>
+          <div>
             <div className="brand-text">Smart Agri Tech Lab</div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px', fontWeight: 600 }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--success)', boxShadow: '0 0 8px var(--success)' }} />
+              Financial Portal
+            </div>
           </div>
-          
-          <nav className="nav" style={{ marginTop: '28px' }}>
-            <div className="nav-item active">
-              <PieChart size={18} />
-              <span>Overview</span>
-            </div>
-            <div className="nav-item" onClick={() => { setIsSettingsOpen(true); setNewBudget(''); setBudgetAction('add'); }}>
-              <Settings size={18} />
-              <span>Settings</span>
-            </div>
-            <div className="nav-item" onClick={generatePDF} style={{ opacity: isGeneratingPDF ? 0.5 : 1, pointerEvents: isGeneratingPDF ? 'none' : 'auto' }}>
-              <FileText size={18} />
-              <span>{isGeneratingPDF ? "Generating PDF..." : "Executive Report"}</span>
-            </div>
-          </nav>
         </div>
-
-        {/* Sidebar Bottom Widget: Financial Health & Quick Shortcut */}
-        <div className="sidebar-footer-card">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-            <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>Reserves Status</span>
-            <span style={{ fontSize: '0.7rem', color: amountLeft < 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: amountLeft < 0 ? 'var(--danger)' : 'var(--success)' }} />
-              {amountLeft < 0 ? 'Over Budget' : 'Healthy'}
-            </span>
+        
+        <nav className="nav">
+          <div className="nav-item active">
+            <PieChart size={18} />
+            <span>Overview</span>
           </div>
-          
-          <div style={{ marginBottom: '10px' }}>
-            <div style={{ fontSize: '1.05rem', fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif" }}>
-              {formatCurrency(amountLeft)}
-            </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-              Remaining of {formatCurrency(totalBudget)}
-            </div>
+          <div className="nav-item" onClick={() => { setIsSettingsOpen(true); setNewBudget(''); setBudgetAction('add'); }}>
+            <Settings size={18} />
+            <span>Settings</span>
           </div>
-
-          <div style={{ height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', overflow: 'hidden', marginBottom: '14px' }}>
-            <div style={{ height: '100%', width: `${spentPct}%`, background: 'linear-gradient(90deg, var(--accent-1), var(--accent-2))' }} />
+          <div className="nav-item" onClick={generatePDF} style={{ opacity: isGeneratingPDF ? 0.5 : 1, pointerEvents: isGeneratingPDF ? 'none' : 'auto' }}>
+            <FileText size={18} />
+            <span>{isGeneratingPDF ? "Generating PDF..." : "Executive Report"}</span>
           </div>
-
-          <button 
-            className="btn btn-primary" 
-            onClick={() => setIsAddOpen(true)}
-            style={{ width: '100%', justifyContent: 'center', fontSize: '0.82rem', padding: '8px 10px' }}
-          >
-            <Plus size={15} /> Quick Add Expense
-          </button>
-        </div>
+        </nav>
       </aside>
 
       {/* Main Interface */}
@@ -544,7 +516,7 @@ export default function LabBudgetTracker() {
             <div className="grid-table" style={{ marginTop: '24px' }}>
               <div className="grid-header">
                 <div>Date</div>
-                <div>Asset / Material on which money is being spent</div>
+                <div>Asset / Material</div>
                 <div>Reference ID</div>
                 <div style={{ textAlign: 'right' }}>Amount</div>
                 <div style={{ textAlign: 'center' }}>Actions</div>
@@ -554,14 +526,16 @@ export default function LabBudgetTracker() {
                   <div className="grid-row" key={p.id}>
                     <div className="cell-date">{new Date(p.date).toLocaleDateString()}</div>
                     <div className="cell-item">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        <span>{p.item}</span>
+                      <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                        {p.item}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                         <span className={`cat-badge cat-${((p.category && p.category !== 'undefined' && p.category !== 'null' && String(p.category).trim() !== '') ? p.category : 'Hardware').toLowerCase()}`}>
                           {(p.category && p.category !== 'undefined' && p.category !== 'null' && String(p.category).trim() !== '') ? p.category : 'Hardware'}
                         </span>
-                        {p.hasReceipt && <span style={{ fontSize: '0.7rem', color: '#60a5fa', background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.3)', padding: '2px 6px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>📎 Receipt</span>}
+                        {p.hasReceipt && <span className="receipt-badge">📎 Receipt</span>}
                       </div>
-                      {p.description && <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: '1.4' }}>{p.description}</div>}
+                      {p.description && <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '6px', lineHeight: '1.35' }}>{p.description}</div>}
                     </div>
                     <div className="cell-details">
                       <FileText size={14} /> {p.details}
@@ -608,7 +582,7 @@ export default function LabBudgetTracker() {
                 </div>
               )}
               <div className="input-group">
-                <label className="input-label">Asset / Material on which money is being spent</label>
+                <label className="input-label">Asset / Material</label>
                 <input 
                   type="text" className="input-field" 
                   placeholder="e.g. Quantum Processor Unit"
