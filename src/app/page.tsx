@@ -377,8 +377,8 @@ export default function LabBudgetTracker() {
             <span>Overview</span>
           </div>
           <div className="nav-item" onClick={() => { setIsSettingsOpen(true); setNewBudget(''); setBudgetAction('add'); }}>
-            <Settings size={18} />
-            <span>Settings</span>
+            <DollarSign size={18} />
+            <span>Manage Budget</span>
           </div>
         </nav>
       </aside>
@@ -664,7 +664,7 @@ export default function LabBudgetTracker() {
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h2 className="modal-title">Settings</h2>
+              <h2 className="modal-title">Manage Budget Allocation</h2>
               <button className="action-btn" onClick={() => setIsSettingsOpen(false)}><X size={20} /></button>
             </div>
             
