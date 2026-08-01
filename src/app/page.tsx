@@ -5,7 +5,16 @@ import {
   Settings, X, FileText, DollarSign, TrendingDown, Building2, PieChart, 
   Hexagon, Plus, Search, Download, Image as ImageIcon, Eye, Edit2, Trash2
 } from 'lucide-react';
-import { saveReceiptImage, getReceiptImage, deleteReceiptImage } from '../lib/db';
+import { 
+  fetchPurchasesFromSupabase, 
+  savePurchaseToSupabase, 
+  deletePurchaseFromSupabase, 
+  fetchBudgetFromSupabase, 
+  saveBudgetToSupabase, 
+  uploadReceiptImage, 
+  getReceiptImage, 
+  deleteReceiptImage 
+} from '../lib/db';
 
 type Purchase = {
   id: string;
@@ -64,33 +73,18 @@ export default function LabBudgetTracker() {
   const [newBudget, setNewBudget] = useState('');
 
   useEffect(() => {
-    const savedPurchases = localStorage.getItem('labPurchases');
-    const savedBudget = localStorage.getItem('labTotalBudget');
-    
-    if (savedPurchases) {
-      try { 
-        const parsed = JSON.parse(savedPurchases);
-        if (Array.isArray(parsed)) {
-          const cleaned = parsed.map((p: any) => ({
-            ...p,
-            category: (p.category && p.category !== 'undefined' && p.category !== 'null' && String(p.category).trim() !== '') ? p.category : 'Hardware'
-          }));
-          setPurchases(cleaned);
-        }
-      } catch (e) {}
+    async function loadData() {
+      const [fetchedPurchases, fetchedBudget] = await Promise.all([
+        fetchPurchasesFromSupabase(),
+        fetchBudgetFromSupabase(),
+      ]);
+      setPurchases(fetchedPurchases);
+      setTotalBudget(fetchedBudget);
+      setIsLoaded(true);
     }
-    if (savedBudget) {
-      try { setTotalBudget(Number(savedBudget)); } catch (e) {}
-    }
-    setIsLoaded(true);
+    loadData();
   }, []);
 
-  useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem('labPurchases', JSON.stringify(purchases));
-      localStorage.setItem('labTotalBudget', totalBudget.toString());
-    }
-  }, [purchases, totalBudget, isLoaded]);
 
   const totalSpent = useMemo(() => purchases.reduce((sum, p) => sum + p.amount, 0), [purchases]);
   const amountLeft = totalBudget - totalSpent;
@@ -186,47 +180,46 @@ export default function LabBudgetTracker() {
 
       try {
         if (receiptPreview) {
-          await saveReceiptImage(targetId, receiptPreview);
+          await uploadReceiptImage(targetId, receiptPreview);
           hasReceipt = true;
         } else if (editId) {
           hasReceipt = purchases.find(p => p.id === editId)?.hasReceipt || false;
         }
       } catch (err) {
-        console.error("Failed to save receipt to DB", err);
-        setFormError('Failed to save receipt image to the database. Storage might be full.');
-        return;
+        console.error("Failed to save receipt", err);
       }
 
+      const updatedPurchase: Purchase = {
+        id: targetId,
+        item: item.trim(),
+        details: details.trim() || 'N/A',
+        amount: parsedAmount,
+        date: date || new Date().toISOString().split('T')[0],
+        description: description.trim(),
+        category,
+        hasReceipt
+      };
+
       if (editId) {
-        setPurchases(prev => prev.map(p => p.id === editId ? {
-          ...p, item: item.trim(), details: details.trim() || 'N/A', amount: parsedAmount, date, description: description.trim(), category, hasReceipt
-        } : p));
+        setPurchases(prev => prev.map(p => p.id === editId ? updatedPurchase : p));
       } else {
-        const newPurchase: Purchase = {
-          id: targetId,
-          item: item.trim(),
-          details: details.trim() || 'N/A',
-          amount: parsedAmount,
-          date: date || new Date().toISOString().split('T')[0],
-          description: description.trim(),
-          category,
-          hasReceipt
-        };
-        setPurchases(prev => [newPurchase, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+        setPurchases(prev => [updatedPurchase, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       }
+
+      // Sync to Supabase in background
+      await savePurchaseToSupabase(updatedPurchase);
+
       closeAddModal();
     }
   };
 
-  const handleUpdateBudget = (e: React.FormEvent) => {
+  const handleUpdateBudget = async (e: React.FormEvent) => {
     e.preventDefault();
     const parsed = parseFloat(newBudget);
     if (!isNaN(parsed) && parsed >= 0) {
-      if (budgetAction === 'add') {
-        setTotalBudget(prev => prev + parsed);
-      } else {
-        setTotalBudget(parsed);
-      }
+      const nextBudget = budgetAction === 'add' ? totalBudget + parsed : parsed;
+      setTotalBudget(nextBudget);
+      await saveBudgetToSupabase(nextBudget);
       setIsSettingsOpen(false);
       setNewBudget('');
     }
@@ -277,6 +270,7 @@ export default function LabBudgetTracker() {
   const deletePurchase = async (id: string, hasReceipt?: boolean) => {
     if(confirm("Erase this record from the ledger?")) {
       setPurchases(prev => prev.filter(p => p.id !== id));
+      await deletePurchaseFromSupabase(id);
       if (hasReceipt) {
         await deleteReceiptImage(id).catch(console.error);
       }
@@ -306,17 +300,18 @@ export default function LabBudgetTracker() {
       const opt = {
         margin: 0,
         filename: `Smart_Agri_Tech_Lab_Ledger_${new Date().toISOString().split('T')[0]}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
+        image: { type: 'jpeg' as const, quality: 0.98 },
         html2canvas: { 
           scale: 2, 
           useCORS: true, 
           backgroundColor: '#09090b',
           windowWidth: 1200 // Force desktop width for PDF rendering
         },
-        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' as const }
       };
 
-      await html2pdf().set(opt).from(element).save();
+        // @ts-ignore
+        await html2pdf().set(opt as any).from(element).save();
     } catch (error) {
       console.error("Failed to generate PDF", error);
       alert("Failed to generate PDF. Please try again.");
