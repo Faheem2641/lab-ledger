@@ -297,21 +297,20 @@ export default function LabBudgetTracker() {
       const element = document.getElementById('report-wrapper');
       if (!element) return;
       
-      const opt = {
+      const opt: any = {
         margin: 0,
         filename: `Smart_Agri_Tech_Lab_Ledger_${new Date().toISOString().split('T')[0]}.pdf`,
-        image: { type: 'jpeg' as const, quality: 0.98 },
+        image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { 
           scale: 2, 
           useCORS: true, 
-          backgroundColor: '#09090b',
-          windowWidth: 1200 // Force desktop width for PDF rendering
+          backgroundColor: '#191D23',
+          windowWidth: 1200
         },
-        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' as const }
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
       };
 
-        // @ts-ignore
-        await html2pdf().set(opt as any).from(element).save();
+      await html2pdf().set(opt).from(element).save();
     } catch (error) {
       console.error("Failed to generate PDF", error);
       alert("Failed to generate PDF. Please try again.");
