@@ -23,6 +23,7 @@ type Purchase = {
   amount: number;
   date: string;
   category: string;
+  purchaser?: string;
   description?: string;
   hasReceipt?: boolean;
 };
@@ -63,6 +64,7 @@ export default function LabBudgetTracker() {
   // Form State
   const [item, setItem] = useState('');
   const [details, setDetails] = useState('');
+  const [purchaser, setPurchaser] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Hardware');
   const [amount, setAmount] = useState('');
@@ -125,7 +127,8 @@ export default function LabBudgetTracker() {
   const filteredPurchases = useMemo(() => {
     return purchases.filter(p => 
       p.item.toLowerCase().includes(debouncedSearch.toLowerCase()) || 
-      p.details.toLowerCase().includes(debouncedSearch.toLowerCase())
+      p.details.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      (p.purchaser || '').toLowerCase().includes(debouncedSearch.toLowerCase())
     );
   }, [purchases, debouncedSearch]);
 
@@ -196,6 +199,7 @@ export default function LabBudgetTracker() {
         date: date || new Date().toISOString().split('T')[0],
         description: description.trim(),
         category,
+        purchaser: purchaser.trim() || 'N/A',
         hasReceipt
       };
 
@@ -228,14 +232,15 @@ export default function LabBudgetTracker() {
     // Sort chronologically (newest first) for export
     const sorted = [...purchases].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     
-    let csv = 'Date,Category,Item,Description,Reference ID,Amount (PKR),Receipt Attached\n';
+    let csv = 'Date,Category,Item,Purchaser,Description,Reference ID,Amount (PKR),Receipt Attached\n';
     sorted.forEach(p => {
       // Escape commas in strings to prevent CSV breaking
-      const item = `"${p.item.replace(/"/g, '""')}"`;
+      const itemStr = `"${p.item.replace(/"/g, '""')}"`;
+      const purchaserStr = `"${(p.purchaser || 'N/A').replace(/"/g, '""')}"`;
       const desc = `"${(p.description || '').replace(/"/g, '""')}"`;
-      const details = `"${p.details.replace(/"/g, '""')}"`;
+      const detailsStr = `"${p.details.replace(/"/g, '""')}"`;
       const cat = (p.category && p.category !== 'undefined' && p.category !== 'null' && String(p.category).trim() !== '') ? p.category : 'Hardware';
-      csv += `${p.date},${cat},${item},${desc},${details},${p.amount},${p.hasReceipt ? 'Yes' : 'No'}\n`;
+      csv += `${p.date},${cat},${itemStr},${purchaserStr},${desc},${detailsStr},${p.amount},${p.hasReceipt ? 'Yes' : 'No'}\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -252,6 +257,7 @@ export default function LabBudgetTracker() {
     setEditId(p.id);
     setItem(p.item);
     setDetails(p.details);
+    setPurchaser(p.purchaser || '');
     setDescription(p.description || '');
     setCategory(p.category && p.category !== 'undefined' && p.category !== 'null' ? p.category : 'Hardware');
     setAmount(p.amount.toString());
@@ -262,7 +268,7 @@ export default function LabBudgetTracker() {
   };
 
   const closeAddModal = () => {
-    setItem(''); setDetails(''); setDescription(''); setCategory('Hardware'); setAmount(''); setEditId(null); 
+    setItem(''); setDetails(''); setPurchaser(''); setDescription(''); setCategory('Hardware'); setAmount(''); setEditId(null); 
     setReceiptFile(null); setReceiptPreview(null); setFormError(null); setIsAddOpen(false);
   };
 
@@ -307,7 +313,7 @@ export default function LabBudgetTracker() {
         ...categoryTotals.map(([cat, amt]) => [cat, amt]),
         [],
         ['EXPENDITURE LEDGER'],
-        ['Date', 'Category', 'Item / Asset', 'Description', 'Reference ID', 'Amount (PKR)', 'Receipt Attached']
+        ['Date', 'Category', 'Item / Asset', 'Purchaser Name', 'Description', 'Reference ID', 'Amount (PKR)', 'Receipt Attached']
       ];
 
       // Append ledger rows
@@ -317,6 +323,7 @@ export default function LabBudgetTracker() {
           p.date,
           cat,
           p.item,
+          p.purchaser || 'N/A',
           p.description || '',
           p.details || 'N/A',
           p.amount,
@@ -331,6 +338,7 @@ export default function LabBudgetTracker() {
         { wch: 15 }, // Date / Metric
         { wch: 18 }, // Category / Amount
         { wch: 30 }, // Item
+        { wch: 24 }, // Purchaser
         { wch: 35 }, // Description
         { wch: 20 }, // Reference ID
         { wch: 16 }, // Amount
@@ -551,6 +559,11 @@ export default function LabBudgetTracker() {
                         <span className={`cat-badge cat-${((p.category && p.category !== 'undefined' && p.category !== 'null' && String(p.category).trim() !== '') ? p.category : 'Hardware').toLowerCase()}`}>
                           {(p.category && p.category !== 'undefined' && p.category !== 'null' && String(p.category).trim() !== '') ? p.category : 'Hardware'}
                         </span>
+                        {p.purchaser && p.purchaser !== 'N/A' && (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                            By: {p.purchaser}
+                          </span>
+                        )}
                         {p.hasReceipt && <span className="receipt-badge">📎 Receipt</span>}
                       </div>
                       {p.description && <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '6px', lineHeight: '1.35' }}>{p.description}</div>}
@@ -609,6 +622,15 @@ export default function LabBudgetTracker() {
               </div>
 
               <div className="input-group">
+                <label className="input-label">Purchaser Name</label>
+                <input 
+                  type="text" className="input-field" 
+                  placeholder="e.g. Faheem Ali"
+                  value={purchaser} onChange={(e) => setPurchaser(e.target.value)}
+                />
+              </div>
+
+              <div className="input-group">
                 <label className="input-label">Category</label>
                 <select className="input-field" value={category} onChange={(e) => setCategory(e.target.value)} style={{ cursor: 'pointer' }}>
                   <option value="Hardware">Hardware</option>
@@ -622,17 +644,17 @@ export default function LabBudgetTracker() {
               
               <div className="input-group">
                 <label className="input-label">Amount (PKR)</label>
-                <input type="number" step="0.01" className="input-field" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+                <input type="number" step="0.01" className="input-field" placeholder="e.g. 5000" value={amount} onChange={(e) => setAmount(e.target.value)} required />
               </div>
 
               <div className="input-group">
                 <label className="input-label">Reference ID</label>
-                <input type="text" className="input-field" value={details} onChange={(e) => setDetails(e.target.value)} />
+                <input type="text" className="input-field" placeholder="e.g. PO-8921 / INV-402" value={details} onChange={(e) => setDetails(e.target.value)} />
               </div>
 
               <div className="input-group">
                 <label className="input-label">Description</label>
-                <textarea className="input-field" value={description} onChange={(e) => setDescription(e.target.value)} style={{ minHeight: '80px', resize: 'vertical' }} />
+                <textarea className="input-field" placeholder="e.g. Purchased for AGRI-BOT V2 sensor calibration module" value={description} onChange={(e) => setDescription(e.target.value)} style={{ minHeight: '80px', resize: 'vertical' }} />
               </div>
 
               <div className="input-group">
@@ -720,6 +742,13 @@ export default function LabBudgetTracker() {
                   <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>Date</span>
                   <div>{new Date(viewedPurchase.date).toLocaleDateString()}</div>
                 </div>
+
+                {viewedPurchase.purchaser && (
+                  <div style={{ marginBottom: '16px' }}>
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>Purchaser Name</span>
+                    <div style={{ fontWeight: 600 }}>{viewedPurchase.purchaser}</div>
+                  </div>
+                )}
 
                 <div style={{ marginBottom: '16px' }}>
                   <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>Reference</span>

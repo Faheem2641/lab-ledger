@@ -7,6 +7,7 @@ export type Purchase = {
   amount: number;
   date: string;
   category: string;
+  purchaser?: string;
   description?: string;
   hasReceipt?: boolean;
   receiptUrl?: string;
@@ -35,6 +36,7 @@ export async function fetchPurchasesFromSupabase(): Promise<Purchase[]> {
         amount: Number(row.amount),
         date: row.date,
         category: row.category || 'Hardware',
+        purchaser: row.purchaser || '',
         hasReceipt: row.has_receipt || false,
         receiptUrl: row.receipt_url || undefined,
       }));
@@ -68,6 +70,7 @@ export async function savePurchaseToSupabase(purchase: Purchase): Promise<void> 
       amount: purchase.amount,
       date: purchase.date,
       category: purchase.category,
+      purchaser: purchase.purchaser || '',
       has_receipt: purchase.hasReceipt || false,
       receipt_url: purchase.receiptUrl || null,
     };
