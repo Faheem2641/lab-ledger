@@ -380,10 +380,6 @@ export default function LabBudgetTracker() {
             <Settings size={18} />
             <span>Settings</span>
           </div>
-          <div className="nav-item" onClick={exportToExcel}>
-            <Download size={18} />
-            <span>Excel Summary</span>
-          </div>
         </nav>
       </aside>
 
