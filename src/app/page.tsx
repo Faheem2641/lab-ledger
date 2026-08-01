@@ -40,7 +40,6 @@ export default function LabBudgetTracker() {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [totalBudget, setTotalBudget] = useState<number>(10000);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   
   // Modals & States
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -286,44 +285,72 @@ export default function LabBudgetTracker() {
     }
   };
 
-  const generatePDF = async () => {
-    setIsGeneratingPDF(true);
-    // Short delay to allow React to apply the `.is-exporting` CSS classes before capturing
-    await new Promise(resolve => setTimeout(resolve, 100));
-
+  const exportToExcel = async () => {
     try {
-      // @ts-ignore - html2pdf doesn't have reliable types without @types/html2pdf.js
-      const html2pdf = (await import('html2pdf.js')).default;
-      const element = document.getElementById('report-wrapper');
-      if (!element) return;
+      const XLSX = await import('xlsx');
       
-      await html2pdf()
-        .set({
-          margin: 0,
-          filename: `Smart_Agri_Tech_Lab_Ledger_${new Date().toISOString().split('T')[0]}.pdf`,
-          image: { type: 'jpeg' as const, quality: 0.98 },
-          html2canvas: { 
-            scale: 2, 
-            useCORS: true, 
-            backgroundColor: '#191D23',
-            windowWidth: 1200
-          },
-          jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' as const }
-        })
-        .from(element)
-        .save();
-    } catch (error) {
-      console.error("Failed to generate PDF", error);
-      alert("Failed to generate PDF. Please try again.");
-    } finally {
-      setIsGeneratingPDF(false);
+      const sorted = [...purchases].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      // 1. Executive Summary Data
+      const summaryData = [
+        ['SMART AGRI TECH LAB - FINANCIAL SUMMARY REPORT'],
+        ['Generated On', new Date().toLocaleString()],
+        [],
+        ['FINANCIAL OVERVIEW', 'AMOUNT (PKR)'],
+        ['Total Allocated Budget', totalBudget],
+        ['Total Expenditure', totalSpent],
+        ['Remaining Reserves', amountLeft],
+        ['Budget Utilization', `${Math.round(spentPct)}%`],
+        ['Total Transactions', purchases.length],
+        [],
+        ['CATEGORY BREAKDOWN', 'SPENT AMOUNT (PKR)'],
+        ...categoryTotals.map(([cat, amt]) => [cat, amt]),
+        [],
+        ['EXPENDITURE LEDGER'],
+        ['Date', 'Category', 'Item / Asset', 'Description', 'Reference ID', 'Amount (PKR)', 'Receipt Attached']
+      ];
+
+      // Append ledger rows
+      sorted.forEach(p => {
+        const cat = (p.category && p.category !== 'undefined' && p.category !== 'null' && String(p.category).trim() !== '') ? p.category : 'Hardware';
+        summaryData.push([
+          p.date,
+          cat,
+          p.item,
+          p.description || '',
+          p.details || 'N/A',
+          p.amount,
+          p.hasReceipt ? 'Yes' : 'No'
+        ]);
+      });
+
+      const worksheet = XLSX.utils.aoa_to_sheet(summaryData);
+
+      // Auto-fit column widths
+      worksheet['!cols'] = [
+        { wch: 15 }, // Date / Metric
+        { wch: 18 }, // Category / Amount
+        { wch: 30 }, // Item
+        { wch: 35 }, // Description
+        { wch: 20 }, // Reference ID
+        { wch: 16 }, // Amount
+        { wch: 16 }  // Receipt
+      ];
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Lab Budget Summary');
+
+      XLSX.writeFile(workbook, `Smart_Agri_Tech_Lab_Ledger_${new Date().toISOString().split('T')[0]}.xlsx`);
+    } catch (err) {
+      console.error('Failed to export Excel report:', err);
+      alert('Failed to generate Excel file. Please try again.');
     }
   };
 
   if (!isLoaded) return null;
 
   return (
-    <div id="report-wrapper" className={isGeneratingPDF ? 'is-exporting' : ''}>
+    <div>
       {/* The Glow Type Thingy - Sunset Colors */}
       <div className="aurora-bg">
         <div className="aurora-blob blob-1"></div>
@@ -339,11 +366,8 @@ export default function LabBudgetTracker() {
             <Hexagon size={22} />
           </div>
           <div>
-            <div className="brand-text">Smart Agri Tech Lab</div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px', fontWeight: 600 }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--success)', boxShadow: '0 0 8px var(--success)' }} />
-              Financial Portal
-            </div>
+            <div className="brand-text">Lab Ledger</div>
+            <div className="file-text" style={{ fontSize: '0.75rem' }}>Smart Agri Tech</div>
           </div>
         </div>
         
@@ -356,9 +380,9 @@ export default function LabBudgetTracker() {
             <Settings size={18} />
             <span>Settings</span>
           </div>
-          <div className="nav-item" onClick={generatePDF} style={{ opacity: isGeneratingPDF ? 0.5 : 1, pointerEvents: isGeneratingPDF ? 'none' : 'auto' }}>
-            <FileText size={18} />
-            <span>{isGeneratingPDF ? "Generating PDF..." : "Executive Report"}</span>
+          <div className="nav-item" onClick={exportToExcel}>
+            <Download size={18} />
+            <span>Excel Summary</span>
           </div>
         </nav>
       </aside>
@@ -493,6 +517,9 @@ export default function LabBudgetTracker() {
                   style={{ paddingLeft: '36px', width: '240px' }}
                 />
               </div>
+              <button className="btn btn-primary" onClick={exportToExcel} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Download size={16} /> Export Excel
+              </button>
               <button className="btn btn-secondary" onClick={exportToCSV} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Download size={16} /> Export CSV
               </button>
