@@ -15,8 +15,13 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Smart Agri Tech Lab",
-  description: "Financial management dashboard for Smart Agri Tech Lab.",
+  title: "EMEDAIOT | Smart Agri Tech Lab",
+  description: "Financial management dashboard for EMEDAIOT Smart Agri Tech Lab.",
+  icons: {
+    icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({

@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { 
   Settings, X, FileText, DollarSign, TrendingDown, Building2, PieChart, 
-  Hexagon, Plus, Search, Download, Image as ImageIcon, Eye, Edit2, Trash2
+  Hexagon, Plus, Search, Download, Image as ImageIcon, Eye, Edit2, Trash2,
+  Copy, Check, CreditCard, Smartphone, ShieldCheck
 } from 'lucide-react';
 import { 
   fetchPurchasesFromSupabase, 
@@ -50,6 +51,13 @@ export default function LabBudgetTracker() {
   const [viewedPurchase, setViewedPurchase] = useState<Purchase | null>(null);
   const [viewReceiptDataUrl, setViewReceiptDataUrl] = useState<string | null>(null);
   const [budgetAction, setBudgetAction] = useState<'add' | 'set'>('add');
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyAccount = () => {
+    navigator.clipboard.writeText('03364448776');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
   
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
@@ -370,11 +378,12 @@ export default function LabBudgetTracker() {
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-icon">
-            <Hexagon size={22} />
+          <div className="brand-logo-card">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="EMEDAIOT Logo" className="brand-logo-img" />
           </div>
           <div>
-            <div className="brand-text">Lab Ledger</div>
+            <div className="brand-text">EMEDAIOT</div>
             <div className="file-text" style={{ fontSize: '0.75rem' }}>Smart Agri Tech</div>
           </div>
         </div>
@@ -389,14 +398,41 @@ export default function LabBudgetTracker() {
             <span>Manage Budget</span>
           </div>
         </nav>
+
+        {/* Sidebar Receiver Info */}
+        <div className="sidebar-receiver-box">
+          <div className="sidebar-receiver-header">
+            <span>Receiver Account</span>
+            <span className="easypaisa-badge" style={{ padding: '2px 8px', fontSize: '0.65rem' }}>Easypaisa</span>
+          </div>
+          <div className="sidebar-receiver-name">Faheem Ali</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: '4px', flexWrap: 'nowrap' }}>
+            <div className="sidebar-receiver-num">03364448776</div>
+            <button 
+              type="button" 
+              className={`copy-btn ${copied ? 'copied' : ''}`} 
+              onClick={handleCopyAccount} 
+              style={{ padding: '3px 8px', fontSize: '0.7rem', height: '24px', flexShrink: 0, whiteSpace: 'nowrap' }}
+              title="Copy account number"
+            >
+              {copied ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
+            </button>
+          </div>
+        </div>
       </aside>
 
       {/* Main Interface */}
       <main className="main-content">
         <header className="header">
-          <div>
-            <h1 className="header-title">Financial Matrix</h1>
-            <p className="header-subtitle">Real-time expenditure visualization</p>
+          <div className="header-brand-group">
+            <div className="header-logo-card">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="EMEDAIOT Logo" className="header-logo-img" />
+            </div>
+            <div>
+              <h1 className="header-title">Financial Matrix</h1>
+              <p className="header-subtitle">Real-time expenditure visualization • EMEDAIOT Smarter Solutions</p>
+            </div>
           </div>
           <button className="btn btn-primary" onClick={() => setIsAddOpen(true)}>
             <Plus size={18} /> Add Record
@@ -430,8 +466,8 @@ export default function LabBudgetTracker() {
             <div className="stat-value" style={{ color: amountLeft < 0 ? 'var(--danger)' : 'var(--success)' }}>
               {formatCurrency(amountLeft)}
             </div>
-            </div>
-          </section>
+          </div>
+        </section>
 
           <section className="analytics-section">
             <div className="analytics-card">
@@ -594,6 +630,17 @@ export default function LabBudgetTracker() {
               </div>
             </div>
           )}
+
+          {/* App Footer */}
+          <footer className="app-footer">
+            <div className="footer-content">
+              <div className="footer-logo-card">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/logo.png" alt="EMEDAIOT Logo" className="footer-logo-img" />
+              </div>
+              <span>© {new Date().getFullYear()} EMEDAIOT — Smarter Solutions • Smart Agri Tech Lab Ledger</span>
+            </div>
+          </footer>
         </div>
       </main>
 
@@ -602,11 +649,28 @@ export default function LabBudgetTracker() {
         <div className="modal-overlay">
           <div className="modal-content" style={{ maxWidth: '600px' }}>
             <div className="modal-header">
-              <h2 className="modal-title">{editId ? "Edit Record" : "Add Record"}</h2>
+              <div className="modal-title-group">
+                <div className="modal-logo-badge">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/logo.png" alt="EMEDAIOT Logo" className="modal-logo-img" />
+                </div>
+                <h2 className="modal-title">{editId ? "Edit Record" : "Add Record"}</h2>
+              </div>
               <button className="action-btn" onClick={closeAddModal}><X size={20} /></button>
             </div>
             
             <form onSubmit={handleAddPurchase}>
+              {/* Receiver Account Helper Banner */}
+              <div style={{ padding: '12px 16px', background: 'linear-gradient(145deg, rgba(87, 112, 122, 0.14) 0%, rgba(87, 112, 122, 0.04) 100%)', border: '1px solid rgba(126, 145, 159, 0.25)', borderRadius: '12px', marginBottom: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Lab Receiver Account (Easypaisa)</div>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>Faheem Ali — <span style={{ color: 'var(--accent-3)', fontFamily: 'var(--font-space-grotesk)' }}>03364448776</span></div>
+                </div>
+                <button type="button" className={`copy-btn ${copied ? 'copied' : ''}`} onClick={handleCopyAccount} style={{ padding: '5px 12px', fontSize: '0.78rem' }}>
+                  {copied ? <><Check size={13} /> Copied</> : <><Copy size={13} /> Copy</>}
+                </button>
+              </div>
+
               {formError && (
                 <div style={{ padding: '12px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', color: 'var(--danger)', marginBottom: '16px', fontSize: '0.9rem', fontWeight: 500 }}>
                   {formError}
@@ -686,7 +750,13 @@ export default function LabBudgetTracker() {
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h2 className="modal-title">Manage Budget Allocation</h2>
+              <div className="modal-title-group">
+                <div className="modal-logo-badge">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/logo.png" alt="EMEDAIOT Logo" className="modal-logo-img" />
+                </div>
+                <h2 className="modal-title">Manage Budget Allocation</h2>
+              </div>
               <button className="action-btn" onClick={() => setIsSettingsOpen(false)}><X size={20} /></button>
             </div>
             
@@ -722,7 +792,13 @@ export default function LabBudgetTracker() {
         <div className="modal-overlay">
           <div className="modal-content" style={{ maxWidth: '800px', width: '90vw' }}>
             <div className="modal-header">
-              <h2 className="modal-title">Log Details</h2>
+              <div className="modal-title-group">
+                <div className="modal-logo-badge">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/logo.png" alt="EMEDAIOT Logo" className="modal-logo-img" />
+                </div>
+                <h2 className="modal-title">Log Details</h2>
+              </div>
               <button className="action-btn" onClick={() => { setViewedPurchase(null); setViewReceiptDataUrl(null); }}><X size={20} /></button>
             </div>
             
