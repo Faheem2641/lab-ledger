@@ -793,10 +793,6 @@ export default function LabBudgetTracker() {
           {/* App Footer */}
           <footer className="app-footer">
             <div className="footer-content">
-              <div className="footer-logo-card">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logo.png" alt="EMEDAIOT Logo" className="footer-logo-img" />
-              </div>
               <span>© {new Date().getFullYear()} EMEDAIOT — Smarter Solutions • Smart Agri Tech Lab Ledger</span>
             </div>
           </footer>
