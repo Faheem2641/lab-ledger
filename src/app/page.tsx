@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { 
   Settings, X, FileText, DollarSign, TrendingDown, Building2, PieChart, 
   Hexagon, Plus, Search, Download, Image as ImageIcon, Eye, Edit2, Trash2,
-  Copy, Check, CreditCard, Smartphone, ShieldCheck
+  Copy, Check, CreditCard, Smartphone, ShieldCheck, Calendar, ChevronLeft, ChevronRight, Filter
 } from 'lucide-react';
 import { 
   fetchPurchasesFromSupabase, 
@@ -52,6 +52,9 @@ export default function LabBudgetTracker() {
   const [viewReceiptDataUrl, setViewReceiptDataUrl] = useState<string | null>(null);
   const [budgetAction, setBudgetAction] = useState<'add' | 'set'>('add');
   const [copied, setCopied] = useState(false);
+
+  // Monthly Filter State
+  const [selectedMonth, setSelectedMonth] = useState<string>('current');
 
   const handleCopyAccount = () => {
     navigator.clipboard.writeText('03364448776');
@@ -132,13 +135,75 @@ export default function LabBudgetTracker() {
 
   const spentPct = totalBudget > 0 ? Math.min((totalSpent / totalBudget) * 100, 100) : 0;
 
+  // Monthly Filter Logic
+  const currentMonthKey = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }, []);
+
+  const availableMonths = useMemo(() => {
+    const monthsSet = new Set<string>();
+    monthsSet.add(currentMonthKey);
+    purchases.forEach(p => {
+      if (p.date && p.date.length >= 7) {
+        monthsSet.add(p.date.substring(0, 7));
+      }
+    });
+    return Array.from(monthsSet).sort().reverse();
+  }, [purchases, currentMonthKey]);
+
+  const activeMonthKey = selectedMonth === 'current' ? currentMonthKey : selectedMonth;
+
+  const formatMonthLabel = (ym: string) => {
+    if (ym === 'all') return 'All-Time Records';
+    const key = ym === 'current' ? currentMonthKey : ym;
+    const [year, month] = key.split('-');
+    const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+    const monthName = date.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    return (ym === 'current' || key === currentMonthKey) ? `${monthName} (Present Month)` : monthName;
+  };
+
   const filteredPurchases = useMemo(() => {
-    return purchases.filter(p => 
-      p.item.toLowerCase().includes(debouncedSearch.toLowerCase()) || 
-      p.details.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-      (p.purchaser || '').toLowerCase().includes(debouncedSearch.toLowerCase())
-    );
-  }, [purchases, debouncedSearch]);
+    return purchases.filter(p => {
+      const matchesSearch = 
+        p.item.toLowerCase().includes(debouncedSearch.toLowerCase()) || 
+        p.details.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        (p.purchaser || '').toLowerCase().includes(debouncedSearch.toLowerCase());
+
+      if (!matchesSearch) return false;
+      if (selectedMonth === 'all') return true;
+      
+      const pMonth = p.date ? p.date.substring(0, 7) : '';
+      return pMonth === activeMonthKey;
+    });
+  }, [purchases, debouncedSearch, selectedMonth, activeMonthKey]);
+
+  const activeMonthMetrics = useMemo(() => {
+    const isAllTime = selectedMonth === 'all';
+    const monthPurchases = isAllTime
+      ? purchases
+      : purchases.filter(p => p.date && p.date.substring(0, 7) === activeMonthKey);
+      
+    const spentInView = monthPurchases.reduce((sum, p) => {
+      const amt = Number(p.amount);
+      return sum + (isNaN(amt) ? 0 : amt);
+    }, 0);
+
+    const safeBudget = Number(totalBudget);
+    const validBudget = (!isNaN(safeBudget) && safeBudget > 0) ? safeBudget : 0;
+
+    const rawPct = validBudget > 0 ? (spentInView / validBudget) * 100 : 0;
+    const percentage = Math.round(rawPct * 10) / 10; // e.g. 76.5%
+
+    return {
+      totalSpent: spentInView,
+      count: monthPurchases.length,
+      percentage: Math.max(0, percentage),
+      isExceeded: validBudget > 0 && spentInView > validBudget,
+      isAllTime,
+      isCurrentMonth: activeMonthKey === currentMonthKey || selectedMonth === 'current'
+    };
+  }, [purchases, selectedMonth, activeMonthKey, currentMonthKey, totalBudget]);
 
   const handleReceiptChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormError(null);
@@ -237,8 +302,8 @@ export default function LabBudgetTracker() {
   };
 
   const exportToCSV = () => {
-    // Sort chronologically (newest first) for export
-    const sorted = [...purchases].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    // Sort chronologically (newest first) for active view
+    const sorted = [...filteredPurchases].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     
     let csv = 'Date,Category,Item,Purchaser,Description,Reference ID,Amount (PKR),Receipt Attached\n';
     sorted.forEach(p => {
@@ -251,11 +316,15 @@ export default function LabBudgetTracker() {
       csv += `${p.date},${cat},${itemStr},${purchaserStr},${desc},${detailsStr},${p.amount},${p.hasReceipt ? 'Yes' : 'No'}\n`;
     });
 
+    const monthTag = selectedMonth === 'all' 
+      ? 'All_Time' 
+      : formatMonthLabel(selectedMonth).replace(/[^a-zA-Z0-9]/g, '_');
+
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Smart_Agri_Tech_Lab_Ledger_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `Smart_Agri_Tech_Lab_Ledger_${monthTag}_${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -303,22 +372,33 @@ export default function LabBudgetTracker() {
     try {
       const XLSX = await import('xlsx');
       
-      const sorted = [...purchases].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      
+      const sorted = [...filteredPurchases].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      const viewSpent = sorted.reduce((sum, p) => sum + p.amount, 0);
+
+      // Category breakdown for exported view
+      const viewCatTotals: Record<string, number> = {};
+      sorted.forEach(p => {
+        const cat = (p.category && p.category !== 'undefined' && p.category !== 'null' && String(p.category).trim() !== '') ? p.category : 'Hardware';
+        viewCatTotals[cat] = (viewCatTotals[cat] || 0) + p.amount;
+      });
+
+      const monthLabel = formatMonthLabel(selectedMonth);
+
       // 1. Executive Summary Data
       const summaryData = [
         ['SMART AGRI TECH LAB - FINANCIAL SUMMARY REPORT'],
+        ['Report View Scope', monthLabel],
         ['Generated On', new Date().toLocaleString()],
         [],
         ['FINANCIAL OVERVIEW', 'AMOUNT (PKR)'],
         ['Total Allocated Budget', totalBudget],
-        ['Total Expenditure', totalSpent],
+        ['View Total Expenditure', viewSpent],
         ['Remaining Reserves', amountLeft],
-        ['Budget Utilization', `${Math.round(spentPct)}%`],
-        ['Total Transactions', purchases.length],
+        ['Budget Utilization (View)', `${totalBudget > 0 ? Math.round((viewSpent / totalBudget) * 100) : 0}%`],
+        ['Transactions in View', sorted.length],
         [],
-        ['CATEGORY BREAKDOWN', 'SPENT AMOUNT (PKR)'],
-        ...categoryTotals.map(([cat, amt]) => [cat, amt]),
+        ['CATEGORY BREAKDOWN (VIEW)', 'SPENT AMOUNT (PKR)'],
+        ...Object.entries(viewCatTotals).map(([cat, amt]) => [cat, amt]),
         [],
         ['EXPENDITURE LEDGER'],
         ['Date', 'Category', 'Item / Asset', 'Purchaser Name', 'Description', 'Reference ID', 'Amount (PKR)', 'Receipt Attached']
@@ -343,8 +423,8 @@ export default function LabBudgetTracker() {
 
       // Auto-fit column widths
       worksheet['!cols'] = [
-        { wch: 15 }, // Date / Metric
-        { wch: 18 }, // Category / Amount
+        { wch: 18 }, // Date / Metric
+        { wch: 22 }, // Category / Amount
         { wch: 30 }, // Item
         { wch: 24 }, // Purchaser
         { wch: 35 }, // Description
@@ -356,7 +436,11 @@ export default function LabBudgetTracker() {
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Lab Budget Summary');
 
-      XLSX.writeFile(workbook, `Smart_Agri_Tech_Lab_Ledger_${new Date().toISOString().split('T')[0]}.xlsx`);
+      const monthTag = selectedMonth === 'all' 
+        ? 'All_Time' 
+        : monthLabel.replace(/[^a-zA-Z0-9]/g, '_');
+
+      XLSX.writeFile(workbook, `Smart_Agri_Tech_Lab_Ledger_${monthTag}_${new Date().toISOString().split('T')[0]}.xlsx`);
     } catch (err) {
       console.error('Failed to export Excel report:', err);
       alert('Failed to generate Excel file. Please try again.');
@@ -424,15 +508,9 @@ export default function LabBudgetTracker() {
       {/* Main Interface */}
       <main className="main-content">
         <header className="header">
-          <div className="header-brand-group">
-            <div className="header-logo-card">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.png" alt="EMEDAIOT Logo" className="header-logo-img" />
-            </div>
-            <div>
-              <h1 className="header-title">Financial Matrix</h1>
-              <p className="header-subtitle">Real-time expenditure visualization • EMEDAIOT Smarter Solutions</p>
-            </div>
+          <div>
+            <h1 className="header-title">Financial Matrix</h1>
+            <p className="header-subtitle">Real-time expenditure visualization • EMEDAIOT Smarter Solutions</p>
           </div>
           <button className="btn btn-primary" onClick={() => setIsAddOpen(true)}>
             <Plus size={18} /> Add Record
@@ -557,12 +635,93 @@ export default function LabBudgetTracker() {
                   style={{ paddingLeft: '36px', width: '240px' }}
                 />
               </div>
-              <button className="btn btn-primary" onClick={exportToExcel} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button className="btn btn-primary" onClick={exportToExcel} style={{ display: 'flex', alignItems: 'center', gap: '8px' }} title={`Export ${formatMonthLabel(selectedMonth)} report to Excel`}>
                 <Download size={16} /> Export Excel
               </button>
-              <button className="btn btn-secondary" onClick={exportToCSV} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button className="btn btn-secondary" onClick={exportToCSV} style={{ display: 'flex', alignItems: 'center', gap: '8px' }} title={`Export ${formatMonthLabel(selectedMonth)} report to CSV`}>
                 <Download size={16} /> Export CSV
               </button>
+            </div>
+          </div>
+
+          {/* Monthly Records Container */}
+          <div className="monthly-container">
+            <div className="monthly-container-header">
+              <div className="monthly-title-group">
+                <Calendar size={20} color="var(--accent-3)" />
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, fontFamily: 'var(--font-space-grotesk)' }}>
+                  {formatMonthLabel(selectedMonth)}
+                </h3>
+                <span className={activeMonthMetrics.isCurrentMonth ? 'monthly-badge-present' : 'monthly-badge-past'}>
+                  {activeMonthMetrics.isCurrentMonth ? 'Present Month' : 'Past Month'}
+                </span>
+              </div>
+
+              <div className="monthly-controls">
+                <button 
+                  type="button"
+                  className={`month-tab-btn ${selectedMonth === 'current' ? 'active' : ''}`}
+                  onClick={() => setSelectedMonth('current')}
+                >
+                  <Calendar size={14} /> Present Month
+                </button>
+
+                <button 
+                  type="button"
+                  className={`month-tab-btn ${selectedMonth === 'all' ? 'active' : ''}`}
+                  onClick={() => setSelectedMonth('all')}
+                >
+                  All-Time
+                </button>
+
+                <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                  <Filter size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', pointerEvents: 'none', zIndex: 2 }} />
+                  <select 
+                    className="input-field" 
+                    value={selectedMonth} 
+                    onChange={e => setSelectedMonth(e.target.value)}
+                    style={{ padding: '6px 36px 6px 38px', height: '38px', fontSize: '0.85rem', width: 'auto', cursor: 'pointer', lineHeight: '1.2' }}
+                  >
+                    <option value="current">Current Month (Present)</option>
+                    <option value="all">All-Time Records</option>
+                    {availableMonths.map(ym => {
+                      const [yr, mo] = ym.split('-');
+                      const d = new Date(parseInt(yr), parseInt(mo) - 1, 1);
+                      const label = d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+                      return (
+                        <option key={ym} value={ym}>
+                          {ym === currentMonthKey ? `${label} (Present)` : label}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="monthly-stats-strip">
+              <div className="monthly-stat-item">
+                <span className="monthly-stat-label">
+                  {activeMonthMetrics.isAllTime ? 'Total Expenditure' : 'Monthly Expenditure'}
+                </span>
+                <span className="monthly-stat-val" style={{ color: 'var(--accent-3)' }}>
+                  {formatCurrency(activeMonthMetrics.totalSpent)}
+                </span>
+              </div>
+              <div className="monthly-stat-item">
+                <span className="monthly-stat-label">Logged Transactions</span>
+                <span className="monthly-stat-val">
+                  {activeMonthMetrics.count} {activeMonthMetrics.count === 1 ? 'Item' : 'Items'}
+                </span>
+              </div>
+              <div className="monthly-stat-item">
+                <span className="monthly-stat-label">
+                  {activeMonthMetrics.isAllTime ? 'Overall Budget Used' : 'Monthly Budget Used'}
+                </span>
+                <span className="monthly-stat-val" style={{ color: activeMonthMetrics.isExceeded ? 'var(--danger)' : 'var(--text-primary)' }}>
+                  {activeMonthMetrics.percentage.toFixed(1)}%
+                </span>
+              </div>
             </div>
           </div>
           

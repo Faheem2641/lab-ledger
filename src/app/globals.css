@@ -116,50 +116,33 @@ body {
 }
 
 .brand-logo-card {
-  background: rgba(255, 255, 255, 0.95);
-  padding: 6px 12px;
+  background: linear-gradient(145deg, rgba(87, 112, 122, 0.15) 0%, rgba(87, 112, 122, 0.05) 100%);
+  padding: 8px 12px;
   border-radius: 14px;
+  border: 1px solid rgba(126, 145, 159, 0.22);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 1);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 20px rgba(25, 29, 35, 0.6), inset 0 1px 0 rgba(222, 220, 220, 0.08);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s ease;
 }
 
-.sidebar:hover .brand-logo-card { transform: scale(1.05); }
+.sidebar:hover .brand-logo-card {
+  transform: scale(1.05);
+  border-color: rgba(126, 145, 159, 0.38);
+}
 
 .brand-logo-img {
-  height: 40px;
+  height: 42px;
   width: auto;
   max-width: 140px;
   object-fit: contain;
+  filter: brightness(0) invert(0.92) drop-shadow(0 2px 10px rgba(87, 112, 122, 0.35));
+  transition: filter 0.3s ease;
 }
 
-.header-brand-group {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.header-logo-card {
-  background: rgba(255, 255, 255, 0.95);
-  padding: 8px 14px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-  transition: transform 0.3s ease;
-}
-
-.header-logo-card:hover {
-  transform: translateY(-2px);
-}
-
-.header-logo-img {
-  height: 44px;
-  width: auto;
-  object-fit: contain;
+.sidebar:hover .brand-logo-img {
+  filter: brightness(0) invert(1) drop-shadow(0 0 14px rgba(197, 186, 196, 0.45));
 }
 
 .modal-title-group {
@@ -169,18 +152,20 @@ body {
 }
 
 .modal-logo-badge {
-  background: rgba(255, 255, 255, 0.95);
+  background: linear-gradient(145deg, rgba(87, 112, 122, 0.16) 0%, rgba(87, 112, 122, 0.06) 100%);
   padding: 4px 10px;
   border-radius: 8px;
   display: inline-flex;
   align-items: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  border: 1px solid rgba(126, 145, 159, 0.25);
+  box-shadow: 0 2px 8px rgba(25, 29, 35, 0.4);
 }
 
 .modal-logo-img {
   height: 24px;
   width: auto;
   object-fit: contain;
+  filter: brightness(0) invert(0.92);
 }
 
 .app-footer {
@@ -201,18 +186,20 @@ body {
 }
 
 .footer-logo-card {
-  background: rgba(255, 255, 255, 0.95);
+  background: linear-gradient(145deg, rgba(87, 112, 122, 0.14) 0%, rgba(87, 112, 122, 0.04) 100%);
   padding: 4px 10px;
   border-radius: 8px;
   display: flex;
   align-items: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(126, 145, 159, 0.2);
+  box-shadow: 0 2px 8px rgba(25, 29, 35, 0.4);
 }
 
 .footer-logo-img {
   height: 22px;
   width: auto;
   object-fit: contain;
+  filter: brightness(0) invert(0.92);
 }
 
 .sidebar:hover .brand-icon { transform: rotate(12deg) scale(1.05); }
@@ -630,6 +617,7 @@ select.input-field {
   background-repeat: no-repeat;
   background-position: right 14px center;
   padding-right: 38px; cursor: pointer;
+  line-height: 1.2;
 }
 
 select.input-field option {
@@ -831,4 +819,124 @@ input[type="date"]::-webkit-datetime-edit-year-field:focus {
   color: var(--accent-3);
   letter-spacing: 0.03em;
   white-space: nowrap;
+}
+
+/* --- Monthly Records Container & Controls --- */
+.monthly-container {
+  background: linear-gradient(145deg, rgba(87, 112, 122, 0.12) 0%, rgba(87, 112, 122, 0.03) 100%);
+  border: 1px solid rgba(126, 145, 159, 0.2);
+  border-radius: 16px;
+  padding: 18px 22px;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 4px 20px rgba(25, 29, 35, 0.4), inset 0 1px 0 rgba(222, 220, 220, 0.06);
+}
+
+.monthly-container-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.monthly-title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.monthly-badge-present {
+  background: rgba(107, 170, 142, 0.18);
+  color: var(--success);
+  border: 1px solid rgba(107, 170, 142, 0.35);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.monthly-badge-past {
+  background: rgba(126, 145, 159, 0.14);
+  color: var(--text-secondary);
+  border: 1px solid rgba(126, 145, 159, 0.25);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.monthly-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.month-tab-btn {
+  background: rgba(87, 112, 122, 0.08);
+  color: var(--text-secondary);
+  border: 1px solid rgba(126, 145, 159, 0.2);
+  padding: 7px 14px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+}
+
+.month-tab-btn:hover {
+  background: rgba(87, 112, 122, 0.16);
+  color: var(--text-primary);
+  border-color: rgba(126, 145, 159, 0.35);
+}
+
+.month-tab-btn.active {
+  background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+  color: var(--color-light);
+  border-color: rgba(222, 220, 220, 0.3);
+  box-shadow: 0 4px 14px rgba(87, 112, 122, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.monthly-stats-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(126, 145, 159, 0.14);
+}
+
+.monthly-stat-item {
+  background: rgba(25, 29, 35, 0.45);
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(126, 145, 159, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.monthly-stat-label {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.monthly-stat-val {
+  font-family: var(--font-space-grotesk), sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
 }
