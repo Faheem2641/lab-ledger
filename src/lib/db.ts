@@ -13,9 +13,51 @@ export type Purchase = {
   receiptUrl?: string;
 };
 
+// ── Helper Utilities ────────────────────────────────────────────
+
+function formatDescriptionWithPurchaser(description?: string, purchaser?: string): string {
+  const cleanDesc = (description || '').replace(/^\[Purchaser: [^\]]+\]\s*/, '').trim();
+  if (purchaser && purchaser.trim()) {
+    return `[Purchaser: ${purchaser.trim()}] ${cleanDesc}`.trim();
+  }
+  return cleanDesc;
+}
+
+function parsePurchaserFromDescription(rawDescription?: string, rawPurchaser?: string): { description: string; purchaser: string } {
+  const desc = rawDescription || '';
+  if (rawPurchaser && rawPurchaser.trim()) {
+    return { description: desc, purchaser: rawPurchaser.trim() };
+  }
+  const match = desc.match(/^\[Purchaser: ([^\]]+)\]\s*(.*)$/s);
+  if (match) {
+    return { purchaser: match[1].trim(), description: match[2].trim() };
+  }
+  return { description: desc, purchaser: '' };
+}
+
+async function syncSinglePurchaseToSupabase(purchase: Purchase): Promise<void> {
+  const fullDesc = formatDescriptionWithPurchaser(purchase.description, purchase.purchaser);
+  const payload = {
+    id: purchase.id,
+    item: purchase.item,
+    details: purchase.details,
+    description: fullDesc,
+    amount: purchase.amount,
+    date: purchase.date,
+    category: purchase.category,
+    has_receipt: purchase.hasReceipt || false,
+    receipt_url: purchase.receiptUrl || null,
+  };
+  const { error } = await supabase.from('purchases').upsert(payload);
+  if (error) {
+    console.error('Failed to sync purchase to Supabase:', error.message);
+  }
+}
+
 // ── Purchases ───────────────────────────────────────────────────
 
 export async function fetchPurchasesFromSupabase(): Promise<Purchase[]> {
+  const local = getLocalPurchases();
   try {
     const { data, error } = await supabase
       .from('purchases')
@@ -24,30 +66,50 @@ export async function fetchPurchasesFromSupabase(): Promise<Purchase[]> {
 
     if (error) {
       console.warn('Supabase fetch purchases error, falling back to local:', error.message);
-      return getLocalPurchases();
+      return local;
     }
 
     if (data) {
-      const mapped: Purchase[] = data.map((row: any) => ({
-        id: row.id,
-        item: row.item,
-        details: row.details || '',
-        description: row.description || '',
-        amount: Number(row.amount),
-        date: row.date,
-        category: row.category || 'Hardware',
-        purchaser: row.purchaser || '',
-        hasReceipt: row.has_receipt || false,
-        receiptUrl: row.receipt_url || undefined,
-      }));
-      // Backup to localStorage
-      localStorage.setItem('labPurchases', JSON.stringify(mapped));
-      return mapped;
+      const mappedFromSupabase: Purchase[] = data.map((row: any) => {
+        const { description, purchaser } = parsePurchaserFromDescription(row.description, row.purchaser);
+        return {
+          id: String(row.id),
+          item: row.item,
+          details: row.details || '',
+          description,
+          amount: Number(row.amount),
+          date: row.date,
+          category: row.category || 'Hardware',
+          purchaser,
+          hasReceipt: row.has_receipt || false,
+          receiptUrl: row.receipt_url || undefined,
+        };
+      });
+
+      // Merge local purchases with Supabase data so local items are never wiped out
+      const supabaseIdSet = new Set(mappedFromSupabase.map((p) => p.id));
+      const localOnly = local.filter((p) => !supabaseIdSet.has(p.id));
+
+      const merged = [...localOnly, ...mappedFromSupabase].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+
+      // Save merged array back to localStorage
+      localStorage.setItem('labPurchases', JSON.stringify(merged));
+
+      // Asynchronously attempt to sync any local-only entries to Supabase
+      if (localOnly.length > 0) {
+        Promise.all(localOnly.map((p) => syncSinglePurchaseToSupabase(p))).catch((err) =>
+          console.warn('Background sync warning:', err)
+        );
+      }
+
+      return merged;
     }
   } catch (err) {
     console.warn('Supabase connection error:', err);
   }
-  return getLocalPurchases();
+  return local;
 }
 
 export async function savePurchaseToSupabase(purchase: Purchase): Promise<void> {
@@ -62,15 +124,15 @@ export async function savePurchaseToSupabase(purchase: Purchase): Promise<void> 
   localStorage.setItem('labPurchases', JSON.stringify(local));
 
   try {
+    const fullDesc = formatDescriptionWithPurchaser(purchase.description, purchase.purchaser);
     const payload = {
       id: purchase.id,
       item: purchase.item,
       details: purchase.details,
-      description: purchase.description || '',
+      description: fullDesc,
       amount: purchase.amount,
       date: purchase.date,
       category: purchase.category,
-      purchaser: purchase.purchaser || '',
       has_receipt: purchase.hasReceipt || false,
       receipt_url: purchase.receiptUrl || null,
     };

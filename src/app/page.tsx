@@ -285,6 +285,12 @@ export default function LabBudgetTracker() {
       // Sync to Supabase in background
       await savePurchaseToSupabase(updatedPurchase);
 
+      // Auto-focus the month of the added/updated record in UI
+      const recordMonth = (updatedPurchase.date || '').substring(0, 7);
+      if (recordMonth && selectedMonth !== 'all') {
+        setSelectedMonth(recordMonth);
+      }
+
       closeAddModal();
     }
   };
